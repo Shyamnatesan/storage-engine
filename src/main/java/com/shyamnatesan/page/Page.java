@@ -1,7 +1,6 @@
 package com.shyamnatesan.page;
 
 import com.shyamnatesan.btree.Btree;
-import com.shyamnatesan.buffer.BufferManager;
 
 public interface Page {
     int getPageId();

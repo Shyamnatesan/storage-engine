@@ -118,7 +118,7 @@ public class InternalPage implements Page {
         System.out.println("searching for key in internal page " + key);
         int pos = 0;
         System.out.println("nk " + this.numOfKeys);
-        for (; pos < this.numOfKeys; ) {
+        while (pos < this.numOfKeys) {
             if (key > this.keys[pos]) {
                 pos++;
             } else if (key == this.keys[pos]) {
@@ -150,7 +150,7 @@ public class InternalPage implements Page {
         System.out.println("inserting key " + key + " in page " + this.getKeys());
         System.out.println(" num k : " + this.numOfKeys);
 
-        for (; pos < this.numOfKeys; ) {
+        while (pos < this.numOfKeys) {
             if (key > this.keys[pos]) {
                 pos++;
             } else if (key == this.keys[pos]) {
@@ -176,13 +176,13 @@ public class InternalPage implements Page {
         if (this.numOfKeys < Constants.MAX_NUM_OF_KEYS) {
 //            insert here, space available
             int index = this.insertKeyInPage(key);
-            if (rightChild != null) {
-                for (int i = this.numOfKeys; i > index + 1; i--) {
-                    this.children[i] = this.children[i - 1];
-                }
-                this.children[index + 1] = rightChild.getPageId();
-                rightChild.setParentPageId(this.pageId);
+//            if (rightChild != null) {
+            for (int i = this.numOfKeys; i > index + 1; i--) {
+                this.children[i] = this.children[i - 1];
             }
+            this.children[index + 1] = rightChild.getPageId();
+            rightChild.setParentPageId(this.pageId);
+//            }
         } else {
 
 //            insert the key and childId here
@@ -210,13 +210,11 @@ public class InternalPage implements Page {
                 rightPage.keys[j] = this.keys[i];
                 rightPage.numOfKeys++;
                 this.keys[i] = 0;
-//                System.out.println(i);
-//                this.slots[i].isDeleted = true;
                 j++;
             }
             this.keys[medianIndex] = 0;
-            System.out.println("current page is " + this.toString());
-            System.out.println("right page is " + rightPage.toString());
+            System.out.println("current page is " + this);
+            System.out.println("right page is " + rightPage);
             j = 0;
             System.out.println("median index is " + medianIndex);
             for (int i = medianIndex + 1; i < this.numOfKeys + 1; i++) {
@@ -226,7 +224,7 @@ public class InternalPage implements Page {
                 BufferManager.getPage(rightPage.children[j]).setParentPageId(rightPage.pageId);
                 j++;
             }
-            System.out.println("right page is " + rightPage.toString());
+            System.out.println("right page is " + rightPage);
 
             this.numOfKeys = medianIndex;
 
@@ -262,19 +260,6 @@ public class InternalPage implements Page {
         }
     }
 
-    private byte[] getSerializedSlots(Slot[] slots) {
-        ByteBuffer buffer = ByteBuffer.allocate(Constants.Slotsize * slots.length);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        for (Slot slot : slots) {
-            if (slot != null) {
-                byte isDeleted = slot.isDeleted ? (byte) 1 : (byte) 0;
-                buffer.put(isDeleted);
-                buffer.putInt(slot.lengthOfDataRecord);
-                buffer.putInt(slot.recordOffset);
-            }
-        }
-        return buffer.array();
-    }
 
     private byte[] getSerializedSlots(Slot slot) {
         ByteBuffer buffer = ByteBuffer.allocate(Constants.Slotsize);

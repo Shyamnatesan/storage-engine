@@ -126,7 +126,7 @@ public class LeafPage implements Page {
 
     @Override
     public String insert(int key, String value, Btree tree) {
-        System.out.println("inserting key " + key + " in page " + this.keys);
+        System.out.println("inserting key " + key + " in page " + Arrays.toString(this.keys));
         System.out.println("the current page has " + this.numOfKeys + " keys");
         byte[] dataRecord = this.constructDataRecord(value);
         int lengthOfDataRecord = dataRecord.length;
@@ -198,7 +198,7 @@ public class LeafPage implements Page {
         for (int i = 0; i < rightPage.numOfKeys; i++) {
             byte[] dataRecord = this.constructDataRecord(rightPage.values[i]);
             Slot slot = new Slot(dataRecord.length, rightPage.freeSpaceOffsetEnd - dataRecord.length);
-            System.out.println("rightpage slot of i " + i + " is " + slot.toString());
+            System.out.println("rightpage slot of i " + i + " is " + slot);
             rightPage.slots[i] = slot;
             byte[] slotSerialized = getSerializedSlots(slot);
             dataBuffer.put(rightPage.freeSpaceOffsetStart, slotSerialized);
@@ -208,8 +208,8 @@ public class LeafPage implements Page {
         }
         rightPage.isDirty = true;
 
-        System.out.println("current page is " + this.toString());
-        System.out.println("right page is " + rightPage.toString());
+        System.out.println("current page is " + this);
+        System.out.println("right page is " + rightPage);
 
         if (this.parentPageId == 0) {
             System.out.println("creating a new parent page");
@@ -222,7 +222,7 @@ public class LeafPage implements Page {
             tree.root = parentPage;
             parentPage.isDirty = true;
             parentPage.numOfKeys++;
-            System.out.println("this is the parent page aka new root " + parentPage.toString());
+            System.out.println("this is the parent page aka new root " + parentPage);
         } else {
             InternalPage parent = (InternalPage) BufferManager.getPage(this.parentPageId);
             parent.maxKeyThresholdReached(medianKey, rightPage, tree);
