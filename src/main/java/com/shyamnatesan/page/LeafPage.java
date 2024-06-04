@@ -37,7 +37,7 @@ public class LeafPage implements Page {
         this.values = new String[Constants.M];
         this.slots = new Slot[Constants.M];
         this.data = new byte[Constants.PageSize];
-        this.rightSibling = 0;
+        this.rightSibling = this.pageId;
         this.generatePageHeader();
         BufferManager.addPageToBuffer(this);
     }
@@ -98,25 +98,30 @@ public class LeafPage implements Page {
     }
 
     @Override
+    public int getRightPage() {
+        return this.rightSibling;
+    }
+
+    @Override
     public String getKeys() {
         return Arrays.toString(this.keys);
     }
 
     @Override
-    public String getChildren() {
-        return "";
+    public int[] getChildren() {
+        return new int[]{};
     }
 
     @Override
     public String getSlots() {
-        String result = "";
+        StringBuilder result = new StringBuilder();
         for (Slot slot : this.slots) {
             if (slot != null) {
-                result += slot.toString();
-                result += " ; ";
+                result.append(slot);
+                result.append(" ; ");
             }
         }
-        return result;
+        return result.toString();
     }
 
     @Override
@@ -179,7 +184,11 @@ public class LeafPage implements Page {
         LeafPage rightPage = new LeafPage();
         System.out.println("page id of rightpage is " + rightPage.pageId);
 
+        if (this.rightSibling != this.pageId) {
+            rightPage.rightSibling = this.rightSibling;
+        }
         this.rightSibling = rightPage.pageId;
+
 
         int j = 0;
         for (int i = medianIndex; i < this.numOfKeys; i++) {
@@ -225,6 +234,7 @@ public class LeafPage implements Page {
             System.out.println("this is the parent page aka new root " + parentPage);
         } else {
             InternalPage parent = (InternalPage) BufferManager.getPage(this.parentPageId);
+            assert parent != null;
             parent.maxKeyThresholdReached(medianKey, rightPage, tree);
         }
 
@@ -277,6 +287,7 @@ public class LeafPage implements Page {
                 ", parentPageId=" + parentPageId +
                 ", freeSpaceOffsetStart=" + freeSpaceOffsetStart +
                 ", freeSpaceOffsetEnd=" + freeSpaceOffsetEnd +
+                ", rightpage=" + this.rightSibling +
                 ", keys=" + Arrays.toString(keys) +
                 ", values=" + Arrays.toString(values) +
                 ", slots=" + Arrays.toString(slots) +

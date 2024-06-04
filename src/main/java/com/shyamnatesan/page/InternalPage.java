@@ -88,25 +88,30 @@ public class InternalPage implements Page {
     }
 
     @Override
+    public int getRightPage() {
+        return 0;
+    }
+
+    @Override
     public String getKeys() {
         return Arrays.toString(this.keys);
     }
 
     @Override
-    public String getChildren() {
-        return Arrays.toString(this.children);
+    public int[] getChildren() {
+        return this.children;
     }
 
     @Override
     public String getSlots() {
-        String result = "";
+        StringBuilder result = new StringBuilder();
         for (Slot slot : this.slots) {
             if (slot != null) {
-                result += slot.toString();
-                result += " ; ";
+                result.append(slot);
+                result.append(" ; ");
             }
         }
-        return result;
+        return result.toString();
     }
 
     @Override
@@ -137,6 +142,7 @@ public class InternalPage implements Page {
         int pos = this.searchPage(key);
         System.out.println("going to page at pos " + pos);
         Page page = BufferManager.getPage(this.children[pos]);
+        assert page != null;
         return page.insert(key, value, tree);
     }
 
@@ -219,7 +225,7 @@ public class InternalPage implements Page {
             System.out.println("median index is " + medianIndex);
             for (int i = medianIndex + 1; i < this.numOfKeys + 1; i++) {
                 rightPage.children[j] = this.children[i];
-                System.out.println(rightPage.getChildren());
+//                System.out.println(rightPage.getChildren());
                 this.children[i] = 0;
                 BufferManager.getPage(rightPage.children[j]).setParentPageId(rightPage.pageId);
                 j++;
@@ -253,6 +259,7 @@ public class InternalPage implements Page {
 
             } else {
                 InternalPage parent = (InternalPage) BufferManager.getPage(this.parentPageId);
+                assert parent != null;
                 parent.maxKeyThresholdReached(medianKey, rightPage, tree);
             }
 

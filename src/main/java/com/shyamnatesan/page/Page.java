@@ -17,9 +17,11 @@ public interface Page {
 
     int getFreeSpaceOffsetEnd();
 
+    int getRightPage();
+
     String getKeys();
 
-    String getChildren();
+    int[] getChildren();
 
     String getSlots();
 
