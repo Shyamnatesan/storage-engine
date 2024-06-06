@@ -6,7 +6,10 @@ import com.shyamnatesan.page.Page;
 import com.shyamnatesan.storageManager.FileManager;
 import com.shyamnatesan.storageManager.StorageManager;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 
 public class Main {
@@ -15,12 +18,8 @@ public class Main {
         FileManager fileManager = storageManager.createFile("firstfile");
 
 
-        for (int i = 1; i <= 200; ) {
-            fileManager.Insert(i, "value" + i);
-            i += 1;
-        }
-
-        for (int i = 400; i >= 201; i--) {
+        List<Integer> input = generateUniqueRandomNumbers(0, 1000, 1000);
+        for (int i : input) {
             fileManager.Insert(i, "value" + i);
         }
 // page 7 at 32th time
@@ -32,8 +31,9 @@ public class Main {
         }
 
         System.out.println("running search");
-        for (int i = 1; i <= 400; i++) {
-            System.out.println(fileManager.Search(i));
+        Collections.sort(input);
+        for (int num : input) {
+            System.out.println(fileManager.Search(num));
         }
 
 //        System.out.println(fileManager.getBtree().root);
@@ -47,6 +47,21 @@ public class Main {
 //        for (Page page : pages) {
 //            System.out.println(page);
 //        }
+    }
+
+    public static List<Integer> generateUniqueRandomNumbers(int min, int max, int count) {
+        if (max - min + 1 < count) {
+            throw new IllegalArgumentException("Range is too small to generate the required number of unique numbers.");
+        }
+
+        List<Integer> numbers = new ArrayList<>();
+        for (int i = min; i <= max; i++) {
+            numbers.add(i);
+        }
+
+        Collections.shuffle(numbers);
+
+        return numbers.subList(0, count);
     }
 
 
