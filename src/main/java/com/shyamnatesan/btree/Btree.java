@@ -1,16 +1,15 @@
 package com.shyamnatesan.btree;
 
-import com.shyamnatesan.buffer.BufferManager;
 import com.shyamnatesan.page.LeafPage;
 import com.shyamnatesan.page.Page;
 
+import java.io.*;
+
 public class Btree {
     public Page root;
-    private final BufferManager bufferManager;
 
-    public Btree() {
-        this.bufferManager = new BufferManager();
-        this.root = new LeafPage();
+    public Btree(RandomAccessFile file) {
+        this.root = new LeafPage(file);
     }
 
 

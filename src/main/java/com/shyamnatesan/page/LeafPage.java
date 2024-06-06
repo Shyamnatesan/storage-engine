@@ -4,27 +4,26 @@ import com.shyamnatesan.Constants;
 import com.shyamnatesan.btree.Btree;
 import com.shyamnatesan.buffer.BufferManager;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
+import java.io.*;
+
 import java.util.Arrays;
 
 public class LeafPage implements Page {
-    public boolean isLeaf;
-    public boolean isDirty;
-    public int pageId;
-    public int numOfKeys;
-    public int parentPageId;
-    public int freeSpaceOffsetStart;
-    public int freeSpaceOffsetEnd;
-    public int[] keys;
-    public String[] values;
-    public Slot[] slots;
-    public byte[] data;
-    public int rightSibling;
+    private final boolean isLeaf;
+    private boolean isDirty;
+    private final int pageId;
+    private int numOfKeys;
+    private int parentPageId;
+    private int freeSpaceOffsetStart;
+    private int freeSpaceOffsetEnd;
+    private final int[] keys;
+    private final String[] values;
+    private final Slot[] slots;
+    private int rightSibling;
+    private final RandomAccessFile file;
 
 
-    public LeafPage() {
+    public LeafPage(RandomAccessFile file) {
         this.isLeaf = true;
         this.isDirty = false;
         this.numOfKeys = 0;
@@ -36,29 +35,9 @@ public class LeafPage implements Page {
         this.keys = new int[Constants.M];
         this.values = new String[Constants.M];
         this.slots = new Slot[Constants.M];
-        this.data = new byte[Constants.PageSize];
         this.rightSibling = this.pageId;
-        this.generatePageHeader();
+        this.file = file;
         BufferManager.addPageToBuffer(this);
-    }
-
-    /*
-     * generatePageHeader()
-     *  - this method is called in the constructor when a page is created.
-     *  - this method populates the header metadata of the page
-     */
-    @Override
-    public void generatePageHeader() {
-        ByteBuffer buffer = ByteBuffer.wrap(this.data);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-
-        byte pageType = isLeaf ? (byte) 0 : (byte) 1;
-        buffer.put(pageType); // 1 byte
-        buffer.putInt(this.pageId); // 4 bytes
-        buffer.putInt(this.parentPageId); // 4 bytes
-        buffer.putInt(this.freeSpaceOffsetStart); // 4 bytes
-        buffer.putInt(this.freeSpaceOffsetEnd); // 4 bytes
-        buffer.putInt(this.numOfKeys); // 4 bytes
     }
 
 
@@ -108,35 +87,28 @@ public class LeafPage implements Page {
     }
 
     @Override
+    public String[] getValues() {
+        return this.values;
+    }
+
+    @Override
     public int[] getChildren() {
         return new int[]{};
     }
 
     @Override
-    public String getSlots() {
-        StringBuilder result = new StringBuilder();
-        for (Slot slot : this.slots) {
-            if (slot != null) {
-                result.append(slot);
-                result.append(" ; ");
-            }
-        }
-        return result.toString();
-    }
-
-    @Override
-    public String getData() {
-        return Arrays.toString(this.data);
+    public Slot[] getSlots() {
+        return this.slots;
     }
 
     @Override
     public String insert(int key, String value, Btree tree) {
         System.out.println("inserting key " + key + " in page " + Arrays.toString(this.keys));
         System.out.println("the current page has " + this.numOfKeys + " keys");
-        byte[] dataRecord = this.constructDataRecord(value);
-        int lengthOfDataRecord = dataRecord.length;
+        int lengthOfDataRecord = value.length();
         int recordOffset = this.freeSpaceOffsetEnd - lengthOfDataRecord;
-        Slot slot = new Slot(lengthOfDataRecord, recordOffset);
+        LeafSlot slot = new LeafSlot(lengthOfDataRecord, recordOffset);
+        this.freeSpaceOffsetEnd = slot.recordOffset;
 
         int pos = 0;
         while (pos < this.numOfKeys && this.keys[pos] < key) {
@@ -150,16 +122,9 @@ public class LeafPage implements Page {
         this.keys[pos] = key;
         this.values[pos] = value;
         this.slots[pos] = slot;
+        this.freeSpaceOffsetStart += Constants.LeafSlotsize;
         this.numOfKeys++;
         this.isDirty = true;
-
-        byte[] slotSerialized = this.getSerializedSlots(slots);
-        ByteBuffer dataBuffer = ByteBuffer.wrap(this.data);
-        dataBuffer.put(Constants.PageHeaderSize, slotSerialized);
-        dataBuffer.put(this.freeSpaceOffsetEnd - lengthOfDataRecord, dataRecord);
-
-        this.freeSpaceOffsetEnd = slot.recordOffset;
-        this.freeSpaceOffsetStart = Constants.PageHeaderSize + (Constants.Slotsize * this.numOfKeys);
 
         if (this.numOfKeys > Constants.MAX_NUM_OF_KEYS) {
             this.maxKeyThresholdReached(tree);
@@ -170,8 +135,19 @@ public class LeafPage implements Page {
     }
 
     @Override
+    public RandomAccessFile getFile() {
+        return this.file;
+    }
+
+
+    @Override
     public void setParentPageId(int parentPageId) {
         this.parentPageId = parentPageId;
+    }
+
+    @Override
+    public void setIsDirty(boolean dirty) {
+        this.isDirty = dirty;
     }
 
 
@@ -181,7 +157,7 @@ public class LeafPage implements Page {
         int medianIndex = this.numOfKeys / 2;
         int medianKey = this.keys[medianIndex];
 
-        LeafPage rightPage = new LeafPage();
+        LeafPage rightPage = new LeafPage(this.file);
         System.out.println("page id of rightpage is " + rightPage.pageId);
 
         if (this.rightSibling != this.pageId) {
@@ -194,27 +170,18 @@ public class LeafPage implements Page {
         for (int i = medianIndex; i < this.numOfKeys; i++) {
             rightPage.keys[j] = this.keys[i];
             rightPage.values[j] = this.values[i];
+            int lengthOfDataRecord = rightPage.values[j].length();
+            LeafSlot newSlot = new LeafSlot(lengthOfDataRecord, rightPage.freeSpaceOffsetEnd - lengthOfDataRecord);
+            rightPage.slots[j] = newSlot;
+            rightPage.freeSpaceOffsetEnd = newSlot.recordOffset;
+            rightPage.freeSpaceOffsetStart += Constants.LeafSlotsize;
             rightPage.numOfKeys++;
             this.keys[i] = 0;
             this.values[i] = "";
-            this.slots[i].isDeleted = true;
+            this.slots[i].setIsDeleted(true);
             j++;
         }
         this.numOfKeys = medianIndex;
-
-        ByteBuffer dataBuffer = ByteBuffer.wrap(rightPage.data);
-
-        for (int i = 0; i < rightPage.numOfKeys; i++) {
-            byte[] dataRecord = this.constructDataRecord(rightPage.values[i]);
-            Slot slot = new Slot(dataRecord.length, rightPage.freeSpaceOffsetEnd - dataRecord.length);
-            System.out.println("rightpage slot of i " + i + " is " + slot);
-            rightPage.slots[i] = slot;
-            byte[] slotSerialized = getSerializedSlots(slot);
-            dataBuffer.put(rightPage.freeSpaceOffsetStart, slotSerialized);
-            rightPage.freeSpaceOffsetStart += Constants.Slotsize;
-            dataBuffer.put(slot.recordOffset, dataRecord);
-            rightPage.freeSpaceOffsetEnd = slot.recordOffset;
-        }
         rightPage.isDirty = true;
 
         System.out.println("current page is " + this);
@@ -222,10 +189,19 @@ public class LeafPage implements Page {
 
         if (this.parentPageId == 0) {
             System.out.println("creating a new parent page");
-            InternalPage parentPage = new InternalPage();
+            InternalPage parentPage = new InternalPage(this.file);
             parentPage.keys[0] = medianKey;
             parentPage.children[0] = this.pageId;
             parentPage.children[1] = rightPage.pageId;
+
+            InternalSlot slot = new InternalSlot(4);
+            slot.setLeftChildPointer(parentPage.freeSpaceOffsetEnd - 4);
+            parentPage.freeSpaceOffsetEnd = slot.leftChildPointer;
+            slot.setRightChildPointer(parentPage.freeSpaceOffsetEnd - 4);
+            parentPage.freeSpaceOffsetEnd = slot.rightChildPointer;
+            parentPage.slots[0] = slot;
+            parentPage.freeSpaceOffsetStart += Constants.InternalSlotSize;
+
             this.parentPageId = parentPage.pageId;
             rightPage.parentPageId = parentPage.pageId;
             tree.root = parentPage;
@@ -238,42 +214,6 @@ public class LeafPage implements Page {
             parent.maxKeyThresholdReached(medianKey, rightPage, tree);
         }
 
-
-    }
-
-
-    private byte[] constructDataRecord(String value) {
-        int lengthOfValue = value.length();
-        ByteBuffer buffer = ByteBuffer.allocate(4 + lengthOfValue);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        buffer.putInt(lengthOfValue);
-        buffer.put(value.getBytes(StandardCharsets.UTF_8));
-        return buffer.array();
-    }
-
-
-    private byte[] getSerializedSlots(Slot[] slots) {
-        ByteBuffer buffer = ByteBuffer.allocate(Constants.Slotsize * slots.length);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        for (Slot slot : slots) {
-            if (slot != null) {
-                byte isDeleted = slot.isDeleted ? (byte) 1 : (byte) 0;
-                buffer.put(isDeleted);
-                buffer.putInt(slot.lengthOfDataRecord);
-                buffer.putInt(slot.recordOffset);
-            }
-        }
-        return buffer.array();
-    }
-
-    private byte[] getSerializedSlots(Slot slot) {
-        ByteBuffer buffer = ByteBuffer.allocate(Constants.Slotsize);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        byte isDeleted = slot.isDeleted ? (byte) 1 : (byte) 0;
-        buffer.put(isDeleted);
-        buffer.putInt(slot.lengthOfDataRecord);
-        buffer.putInt(slot.recordOffset);
-        return buffer.array();
 
     }
 
@@ -291,7 +231,6 @@ public class LeafPage implements Page {
                 ", keys=" + Arrays.toString(keys) +
                 ", values=" + Arrays.toString(values) +
                 ", slots=" + Arrays.toString(slots) +
-                ", data=" + Arrays.toString(data) +
                 ", rightSibling=" + rightSibling +
                 '}';
     }

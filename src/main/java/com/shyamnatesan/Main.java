@@ -3,24 +3,32 @@ package com.shyamnatesan;
 import com.shyamnatesan.btree.Btree;
 import com.shyamnatesan.buffer.BufferManager;
 import com.shyamnatesan.page.Page;
+import com.shyamnatesan.storageManager.FileManager;
+import com.shyamnatesan.storageManager.StorageManager;
 
 import java.util.Arrays;
 
 
 public class Main {
     public static void main(String[] args) {
-        Btree btree = new Btree();
-        for (int i = 1; i < 100; i++) {
-            btree.insert(i, "shyam");
+        StorageManager storageManager = new StorageManager();
+        FileManager fileManager = storageManager.createFile("firstfile");
+
+
+        for (int i = 100; i >= 1; ) {
+            fileManager.Insert(i, "value" + i);
+            i--;
         }
 
-        System.out.println("checking the results");
-        System.out.println(btree.root);
+        /* to print data pages */
+        Btree btree = fileManager.getBtree();
         printDataPages(btree.root);
 
+        /* to print all pages in buffer */
         Page[] pages = BufferManager.getPages();
-        System.out.println("total number of pages " + pages.length);
-
+        for (Page page : pages) {
+            System.out.println(page);
+        }
     }
 
 
@@ -40,7 +48,6 @@ public class Main {
                 System.out.println("    freeSpaceOffsetEnd of page is " + current.getFreeSpaceOffsetEnd());
                 System.out.println("    parent page id is " + current.getParentPageId());
                 System.out.println("    slots of this page is " + current.getSlots());
-                System.out.println("    data is " + current.getData());
                 System.out.println("}");
                 if (current.getRightPage() == current.getPageId()) {
                     current = null;

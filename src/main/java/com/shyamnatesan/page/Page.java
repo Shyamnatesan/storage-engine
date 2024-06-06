@@ -2,6 +2,8 @@ package com.shyamnatesan.page;
 
 import com.shyamnatesan.btree.Btree;
 
+import java.io.*;
+
 public interface Page {
     int getPageId();
 
@@ -21,17 +23,18 @@ public interface Page {
 
     String getKeys();
 
+    String[] getValues();
+
     int[] getChildren();
 
-    String getSlots();
-
-    String getData();
+    Slot[] getSlots();
 
     void setParentPageId(int parentPageId);
 
-    void generatePageHeader();
+    void setIsDirty(boolean dirty);
 
     String insert(int key, String value, Btree tree);
 
+    RandomAccessFile getFile();
 
 }
