@@ -1,22 +1,11 @@
 package com.shyamnatesan.page;
 
-public class Slot {
-    public boolean isDeleted;
-    public int lengthOfDataRecord;
-    public int recordOffset;
+public interface Slot {
+    boolean isDeleted();
 
-    public Slot(int lengthOfDataRecord, int recordOffset) {
-        this.isDeleted = false;
-        this.lengthOfDataRecord = lengthOfDataRecord;
-        this.recordOffset = recordOffset;
-    }
+    void setIsDeleted(boolean flag);
 
-    @Override
-    public String toString() {
-        return "Slot{" +
-                "isDeleted=" + isDeleted +
-                ", lengthOfDataRecord=" + lengthOfDataRecord +
-                ", recordOffset=" + recordOffset +
-                '}';
-    }
+    int getLengthOfDataRecord();
+
+    int[] getRecordOffsets();
 }
