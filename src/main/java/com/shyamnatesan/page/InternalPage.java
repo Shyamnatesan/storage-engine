@@ -42,8 +42,18 @@ public class InternalPage implements Page {
     }
 
     @Override
+    public void setPageId(int pageId) {
+        this.pageId = pageId;
+    }
+
+    @Override
     public boolean isLeaf() {
         return this.isLeaf;
+    }
+
+    @Override
+    public void setIsLeaf(boolean flag) {
+        this.isLeaf = flag;
     }
 
     @Override
@@ -52,8 +62,18 @@ public class InternalPage implements Page {
     }
 
     @Override
+    public void setIsDirty(boolean dirty) {
+        this.isDirty = dirty;
+    }
+
+    @Override
     public int getNumKeys() {
         return this.numOfKeys;
+    }
+
+    @Override
+    public void setNumKeys(int numKeys) {
+        this.numOfKeys = numKeys;
     }
 
     @Override
@@ -62,8 +82,18 @@ public class InternalPage implements Page {
     }
 
     @Override
+    public void setParentPageId(int parentPageId) {
+        this.parentPageId = parentPageId;
+    }
+
+    @Override
     public int getFreeSpaceOffsetStart() {
         return this.freeSpaceOffsetStart;
+    }
+
+    @Override
+    public void setFreeSpaceOffsetStart(int freeSpaceOffsetStart) {
+        this.freeSpaceOffsetStart = freeSpaceOffsetStart;
     }
 
     @Override
@@ -72,8 +102,17 @@ public class InternalPage implements Page {
     }
 
     @Override
+    public void setFreeSpaceOffsetEnd(int freeSpaceOffsetEnd) {
+        this.freeSpaceOffsetEnd = freeSpaceOffsetEnd;
+    }
+
+    @Override
     public int getRightPage() {
         return 0;
+    }
+
+    @Override
+    public void setRightPage(int rightPage) {
     }
 
     @Override
@@ -82,8 +121,17 @@ public class InternalPage implements Page {
     }
 
     @Override
+    public void setKeys(int[] keys) {
+        this.keys = keys;
+    }
+
+    @Override
     public String[] getValues() {
         return new String[0];
+    }
+
+    @Override
+    public void setValues(String[] values) {
     }
 
     @Override
@@ -91,8 +139,23 @@ public class InternalPage implements Page {
         return this.children;
     }
 
+    @Override
+    public void setChildren(int[] children) {
+        this.children = children;
+    }
+
     public Slot[] getSlots() {
         return this.slots;
+    }
+
+    @Override
+    public void setSlots(Slot[] slots) {
+        this.slots = slots;
+    }
+
+    @Override
+    public RandomAccessFile getFile() {
+        return this.file;
     }
 
     public int searchPage(int key) {
@@ -117,25 +180,24 @@ public class InternalPage implements Page {
         System.out.println("inserting in the internal page");
         int pos = this.searchPage(key);
         System.out.println("going to page at pos " + pos);
-        Page page = BufferManager.getPage(this.children[pos]);
+        Page page = BufferManager.getPage(this.children[pos], this.file);
         assert page != null;
         return page.insert(key, value, tree);
     }
 
-    @Override
-    public RandomAccessFile getFile() {
-        return this.file;
-    }
-
 
     @Override
-    public void setParentPageId(int parentPageId) {
-        this.parentPageId = parentPageId;
-    }
-
-    @Override
-    public void setIsDirty(boolean dirty) {
-        this.isDirty = dirty;
+    public String search(int key) {
+        int pos = 0;
+        while (pos < this.numOfKeys) {
+            if (key >= this.keys[pos]) {
+                pos++;
+            } else {
+                break;
+            }
+        }
+        Page page = BufferManager.getPage(this.children[pos], this.file);
+        return page.search(key);
     }
 
     private int insertKeyInPage(int key) {
@@ -152,12 +214,11 @@ public class InternalPage implements Page {
                 break;
             }
         }
-
-        InternalSlot slot = new InternalSlot(4);
-        slot.setLeftChildPointer(this.freeSpaceOffsetEnd - 4);
-        this.freeSpaceOffsetEnd = slot.leftChildPointer;
-        slot.setRightChildPointer(this.freeSpaceOffsetEnd - 4);
-        this.freeSpaceOffsetEnd = slot.rightChildPointer;
+        int leftChildPointer = this.freeSpaceOffsetEnd - 4;
+        this.freeSpaceOffsetEnd = leftChildPointer;
+        int rightChildPointer = this.freeSpaceOffsetEnd - 4;
+        this.freeSpaceOffsetEnd = rightChildPointer;
+        InternalSlot slot = new InternalSlot(4, key, leftChildPointer, rightChildPointer);
 
 
         for (int i = this.numOfKeys - 1; i >= pos; i--) {
@@ -210,11 +271,12 @@ public class InternalPage implements Page {
             int j = 0;
             for (int i = medianIndex + 1; i < this.numOfKeys; i++) {
                 rightPage.keys[j] = this.keys[i];
-                InternalSlot newslot = new InternalSlot(4);
-                newslot.setLeftChildPointer(rightPage.freeSpaceOffsetEnd - 4);
-                rightPage.freeSpaceOffsetEnd = newslot.leftChildPointer;
-                newslot.setRightChildPointer(rightPage.freeSpaceOffsetEnd - 4);
-                rightPage.freeSpaceOffsetEnd = newslot.rightChildPointer;
+                int leftChildPointer = rightPage.freeSpaceOffsetEnd - 4;
+                rightPage.freeSpaceOffsetEnd = leftChildPointer;
+                int rightChildPointer = rightPage.freeSpaceOffsetEnd - 4;
+                rightPage.freeSpaceOffsetEnd = rightChildPointer;
+                InternalSlot newslot = new InternalSlot(4, rightPage.keys[j], leftChildPointer, rightChildPointer);
+
                 rightPage.slots[j] = newslot;
                 rightPage.freeSpaceOffsetStart += Constants.InternalSlotSize;
                 rightPage.numOfKeys++;
@@ -231,7 +293,7 @@ public class InternalPage implements Page {
             for (int i = medianIndex + 1; i < this.numOfKeys + 1; i++) {
                 rightPage.children[j] = this.children[i];
                 this.children[i] = 0;
-                BufferManager.getPage(rightPage.children[j]).setParentPageId(rightPage.pageId);
+                BufferManager.getPage(rightPage.children[j], this.file).setParentPageId(rightPage.pageId);
                 j++;
             }
             System.out.println("right page is " + rightPage);
@@ -247,11 +309,12 @@ public class InternalPage implements Page {
                 parentPage.children[0] = this.pageId;
                 parentPage.children[1] = rightPage.pageId;
 
-                InternalSlot newslot = new InternalSlot(4);
-                newslot.setLeftChildPointer(parentPage.freeSpaceOffsetEnd - 4);
-                parentPage.freeSpaceOffsetEnd = newslot.leftChildPointer;
-                newslot.setRightChildPointer(parentPage.freeSpaceOffsetEnd - 4);
-                parentPage.freeSpaceOffsetEnd = newslot.rightChildPointer;
+                int leftChildPointer = parentPage.freeSpaceOffsetEnd - 4;
+                parentPage.freeSpaceOffsetEnd = leftChildPointer;
+                int rightChildPointer = parentPage.freeSpaceOffsetEnd - 4;
+                parentPage.freeSpaceOffsetEnd = rightChildPointer;
+
+                InternalSlot newslot = new InternalSlot(4, medianKey, leftChildPointer, rightChildPointer);
                 parentPage.slots[0] = newslot;
                 parentPage.freeSpaceOffsetStart += Constants.InternalSlotSize;
 
@@ -261,7 +324,7 @@ public class InternalPage implements Page {
                 parentPage.isDirty = true;
 
             } else {
-                InternalPage parent = (InternalPage) BufferManager.getPage(this.parentPageId);
+                InternalPage parent = (InternalPage) BufferManager.getPage(this.parentPageId, this.file);
                 assert parent != null;
                 parent.maxKeyThresholdReached(medianKey, rightPage, tree);
             }

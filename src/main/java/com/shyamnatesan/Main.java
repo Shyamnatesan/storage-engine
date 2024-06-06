@@ -1,6 +1,6 @@
 package com.shyamnatesan;
 
-import com.shyamnatesan.btree.Btree;
+
 import com.shyamnatesan.buffer.BufferManager;
 import com.shyamnatesan.page.Page;
 import com.shyamnatesan.storageManager.FileManager;
@@ -15,20 +15,38 @@ public class Main {
         FileManager fileManager = storageManager.createFile("firstfile");
 
 
-        for (int i = 100; i >= 1; ) {
+        for (int i = 1; i <= 200; ) {
             fileManager.Insert(i, "value" + i);
-            i--;
+            i += 1;
         }
 
-        /* to print data pages */
-        Btree btree = fileManager.getBtree();
-        printDataPages(btree.root);
-
-        /* to print all pages in buffer */
-        Page[] pages = BufferManager.getPages();
-        for (Page page : pages) {
-            System.out.println(page);
+        for (int i = 400; i >= 201; i--) {
+            fileManager.Insert(i, "value" + i);
         }
+// page 7 at 32th time
+
+        try {
+            Thread.sleep(60000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        System.out.println("running search");
+        for (int i = 1; i <= 400; i++) {
+            System.out.println(fileManager.Search(i));
+        }
+
+//        System.out.println(fileManager.getBtree().root);
+//
+//        /* to print data pages */
+//        Btree btree = fileManager.getBtree();
+//        printDataPages(btree.root);
+//
+//        /* to print all pages in buffer */
+//        Page[] pages = BufferManager.getPages();
+//        for (Page page : pages) {
+//            System.out.println(page);
+//        }
     }
 
 
@@ -52,14 +70,14 @@ public class Main {
                 if (current.getRightPage() == current.getPageId()) {
                     current = null;
                 } else {
-                    current = BufferManager.getPage(current.getRightPage());
+                    current = BufferManager.getPage(current.getRightPage(), current.getFile());
                 }
             }
             return;
         }
         assert root != null;
         int[] rootsChildren = root.getChildren();
-        Page childPage = BufferManager.getPage(rootsChildren[0]);
+        Page childPage = BufferManager.getPage(rootsChildren[0], root.getFile());
         printDataPages(childPage);
     }
 }

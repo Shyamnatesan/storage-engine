@@ -1,16 +1,10 @@
 package com.shyamnatesan.buffer;
 
 
-import com.shyamnatesan.Constants;
+import com.shyamnatesan.diskIO.DiskManager;
 import com.shyamnatesan.page.Page;
-import com.shyamnatesan.page.Slot;
 
-
-import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -26,17 +20,26 @@ public class BufferManager {
     public BufferManager() {
         BufferPool = new ConcurrentHashMap<>(100);
 
-        execService.scheduleWithFixedDelay(BufferManager::scanBufferPool, 0, 30, TimeUnit.SECONDS);
+        execService.scheduleWithFixedDelay(BufferManager::scanBufferPool, 0, 25, TimeUnit.SECONDS);
     }
 
     public static void addPageToBuffer(Page page) {
         BufferPool.put(page.getPageId(), page);
     }
 
-    public static Page getPage(int PageId) {
-        if (BufferPool.containsKey(PageId)) {
-            return BufferPool.get(PageId);
+    public static Page getPage(int pageId, RandomAccessFile file) {
+        if (BufferPool.containsKey(pageId)) {
+            return BufferPool.get(pageId);
+        } else {
+//            System.out.println("buffer pool does not contain key. searching in disk...");
+            Page page = DiskManager.readPage(pageId, file);
+//            System.out.println("page read from disk is below");
+//            System.out.println(page);
+            if (page != null) {
+                return page;
+            }
         }
+
         return null;
     }
 
@@ -54,86 +57,10 @@ public class BufferManager {
         for (Map.Entry<Integer, Page> entry : BufferPool.entrySet()) {
             Page page = entry.getValue();
             if (page.isDirty()) {
-                flushPageToDisk(page);
+                DiskManager.writePage(page);
+                page.setIsDirty(false);
             }
         }
+//        BufferPool.clear();
     }
-
-    private static byte[] serializePageToByteArray(Page page) {
-        ByteBuffer buffer = ByteBuffer.allocate(Constants.PageSize);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-
-//        common for both leaf and internal pages
-        byte isLeaf = page.isLeaf() ? (byte) 1 : (byte) 0;
-        buffer.put(isLeaf);
-        buffer.putInt(page.getPageId());
-        buffer.putInt(page.getNumKeys());
-        buffer.putInt(page.getParentPageId());
-        buffer.putInt(page.getFreeSpaceOffsetStart());
-        buffer.putInt(page.getFreeSpaceOffsetEnd());
-
-        if (page.isLeaf()) {
-            System.out.println("now serializing specific to leaf page");
-//            serialize rightSibling
-            buffer.putInt(page.getRightPage());
-//            serialize slots and their corresponding data records/values
-            Slot[] slots = page.getSlots();
-            String[] values = page.getValues();
-            int index = 0;
-            for (int i = 0; i < page.getNumKeys(); i++) {
-                byte isDeleted = slots[i].isDeleted() ? (byte) 1 : (byte) 0;
-                buffer.put(isDeleted);
-                buffer.putInt(slots[i].getLengthOfDataRecord());
-                int recordOffset = slots[i].getRecordOffsets()[0];
-                buffer.putInt(recordOffset);
-                buffer.put(recordOffset, values[index++].getBytes(StandardCharsets.UTF_8));
-            }
-        } else {
-            System.out.println("now serializing specific to internal page");
-//            serialize slots and their corresponding child offsets
-            Slot[] slots = page.getSlots();
-            System.out.println("internal slots " + slots);
-            int[] children = page.getChildren();
-            System.out.println("internal children " + children);
-            int index = 0;
-            for (int i = 0; i < page.getNumKeys(); i++) {
-                if (slots[i] != null) {
-                    byte isDeleted = slots[i].isDeleted() ? (byte) 1 : (byte) 0;
-                    buffer.put(isDeleted);
-                    buffer.putInt(slots[i].getLengthOfDataRecord());
-                    int[] recordOffsets = slots[i].getRecordOffsets();
-//                    recordOffsets = [leftChildPointer, rightChildPointer]
-                    buffer.putInt(recordOffsets[0]);
-                    buffer.putInt(recordOffsets[1]);
-                    buffer.putInt(recordOffsets[0], children[index]);
-                    buffer.putInt(recordOffsets[1], children[index + 1]);
-                    index++;
-                }
-            }
-        }
-
-        System.out.println("finished serialization");
-
-        return buffer.array();
-    }
-
-    private static void flushPageToDisk(Page page) {
-        System.out.println("flushing page " + page.getPageId() + " to disk");
-        byte[] serializedPage = serializePageToByteArray(page);
-        System.out.println(serializedPage.length);
-        RandomAccessFile file = page.getFile();
-        int offset = page.getPageId() * Constants.PageSize;
-        System.out.println("page offset is " + offset);
-        try {
-            file.seek(offset);
-            file.write(serializedPage);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        System.out.println("setting page to dirty");
-        page.setIsDirty(false);
-
-    }
-
-
 }

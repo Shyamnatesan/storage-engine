@@ -17,4 +17,7 @@ public class Btree {
         return this.root.insert(key, value, this);
     }
 
+    public String search(int key) {
+        return this.root.search(key);
+    }
 }

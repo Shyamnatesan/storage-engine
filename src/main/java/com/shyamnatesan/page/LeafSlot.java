@@ -3,13 +3,15 @@ package com.shyamnatesan.page;
 public class LeafSlot implements Slot {
     public boolean isDeleted;
     public int lengthOfDataRecord;
+    public int key;
     public int recordOffset;
 
 
-    public LeafSlot(int lengthOfDataRecord, int recordOffset) {
+    public LeafSlot(int lengthOfDataRecord, int recordOffset, int key) {
         this.isDeleted = false;
         this.lengthOfDataRecord = lengthOfDataRecord;
         this.recordOffset = recordOffset;
+        this.key = key;
     }
 
     @Override
@@ -27,6 +29,7 @@ public class LeafSlot implements Slot {
         return this.lengthOfDataRecord;
     }
 
+
     @Override
     public int[] getRecordOffsets() {
         int[] result = new int[1];
@@ -35,11 +38,22 @@ public class LeafSlot implements Slot {
     }
 
     @Override
+    public int getKey() {
+        return this.key;
+    }
+
+    @Override
+    public void setKey(int key) {
+        this.key = key;
+    }
+
+    @Override
     public String toString() {
         return "LeafSlot{" +
                 "isDeleted=" + isDeleted +
                 ", lengthOfDataRecord=" + lengthOfDataRecord +
                 ", recordOffset=" + recordOffset +
+                ", key=" + key +
                 '}';
     }
 }

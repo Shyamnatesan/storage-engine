@@ -9,19 +9,18 @@ import java.io.*;
 import java.util.Arrays;
 
 public class LeafPage implements Page {
-    private final boolean isLeaf;
+    private boolean isLeaf;
     private boolean isDirty;
-    private final int pageId;
+    private int pageId;
     private int numOfKeys;
     private int parentPageId;
     private int freeSpaceOffsetStart;
     private int freeSpaceOffsetEnd;
-    private final int[] keys;
-    private final String[] values;
-    private final Slot[] slots;
+    private int[] keys;
+    private String[] values;
+    private Slot[] slots;
     private int rightSibling;
     private final RandomAccessFile file;
-
 
     public LeafPage(RandomAccessFile file) {
         this.isLeaf = true;
@@ -40,10 +39,14 @@ public class LeafPage implements Page {
         BufferManager.addPageToBuffer(this);
     }
 
-
     @Override
     public int getPageId() {
         return this.pageId;
+    }
+
+    @Override
+    public void setPageId(int pageId) {
+        this.pageId = pageId;
     }
 
     @Override
@@ -52,8 +55,18 @@ public class LeafPage implements Page {
     }
 
     @Override
+    public void setIsLeaf(boolean flag) {
+        this.isLeaf = flag;
+    }
+
+    @Override
     public boolean isDirty() {
         return this.isDirty;
+    }
+
+    @Override
+    public void setIsDirty(boolean dirty) {
+        this.isDirty = dirty;
     }
 
     @Override
@@ -62,8 +75,18 @@ public class LeafPage implements Page {
     }
 
     @Override
+    public void setNumKeys(int numKeys) {
+        this.numOfKeys = numKeys;
+    }
+
+    @Override
     public int getParentPageId() {
         return this.parentPageId;
+    }
+
+    @Override
+    public void setParentPageId(int parentPageId) {
+        this.parentPageId = parentPageId;
     }
 
     @Override
@@ -72,8 +95,18 @@ public class LeafPage implements Page {
     }
 
     @Override
+    public void setFreeSpaceOffsetStart(int freeSpaceOffsetStart) {
+        this.freeSpaceOffsetStart = freeSpaceOffsetStart;
+    }
+
+    @Override
     public int getFreeSpaceOffsetEnd() {
         return this.freeSpaceOffsetEnd;
+    }
+
+    @Override
+    public void setFreeSpaceOffsetEnd(int freeSpaceOffsetEnd) {
+        this.freeSpaceOffsetEnd = freeSpaceOffsetEnd;
     }
 
     @Override
@@ -82,8 +115,18 @@ public class LeafPage implements Page {
     }
 
     @Override
+    public void setRightPage(int rightPage) {
+        this.rightSibling = rightPage;
+    }
+
+    @Override
     public String getKeys() {
         return Arrays.toString(this.keys);
+    }
+
+    @Override
+    public void setKeys(int[] keys) {
+        this.keys = keys;
     }
 
     @Override
@@ -92,8 +135,17 @@ public class LeafPage implements Page {
     }
 
     @Override
+    public void setValues(String[] values) {
+        this.values = values;
+    }
+
+    @Override
     public int[] getChildren() {
         return new int[]{};
+    }
+
+    @Override
+    public void setChildren(int[] children) {
     }
 
     @Override
@@ -102,12 +154,22 @@ public class LeafPage implements Page {
     }
 
     @Override
+    public void setSlots(Slot[] slots) {
+        this.slots = slots;
+    }
+
+    @Override
+    public RandomAccessFile getFile() {
+        return this.file;
+    }
+
+    @Override
     public String insert(int key, String value, Btree tree) {
         System.out.println("inserting key " + key + " in page " + Arrays.toString(this.keys));
         System.out.println("the current page has " + this.numOfKeys + " keys");
         int lengthOfDataRecord = value.length();
         int recordOffset = this.freeSpaceOffsetEnd - lengthOfDataRecord;
-        LeafSlot slot = new LeafSlot(lengthOfDataRecord, recordOffset);
+        LeafSlot slot = new LeafSlot(lengthOfDataRecord, recordOffset, key);
         this.freeSpaceOffsetEnd = slot.recordOffset;
 
         int pos = 0;
@@ -135,19 +197,13 @@ public class LeafPage implements Page {
     }
 
     @Override
-    public RandomAccessFile getFile() {
-        return this.file;
-    }
-
-
-    @Override
-    public void setParentPageId(int parentPageId) {
-        this.parentPageId = parentPageId;
-    }
-
-    @Override
-    public void setIsDirty(boolean dirty) {
-        this.isDirty = dirty;
+    public String search(int key) {
+        for (int i = 0; i < this.numOfKeys; i++) {
+            if (key == this.keys[i]) {
+                return this.values[i];
+            }
+        }
+        return "key does not exist";
     }
 
 
@@ -171,7 +227,7 @@ public class LeafPage implements Page {
             rightPage.keys[j] = this.keys[i];
             rightPage.values[j] = this.values[i];
             int lengthOfDataRecord = rightPage.values[j].length();
-            LeafSlot newSlot = new LeafSlot(lengthOfDataRecord, rightPage.freeSpaceOffsetEnd - lengthOfDataRecord);
+            LeafSlot newSlot = new LeafSlot(lengthOfDataRecord, rightPage.freeSpaceOffsetEnd - lengthOfDataRecord, rightPage.keys[j]);
             rightPage.slots[j] = newSlot;
             rightPage.freeSpaceOffsetEnd = newSlot.recordOffset;
             rightPage.freeSpaceOffsetStart += Constants.LeafSlotsize;
@@ -194,11 +250,13 @@ public class LeafPage implements Page {
             parentPage.children[0] = this.pageId;
             parentPage.children[1] = rightPage.pageId;
 
-            InternalSlot slot = new InternalSlot(4);
-            slot.setLeftChildPointer(parentPage.freeSpaceOffsetEnd - 4);
-            parentPage.freeSpaceOffsetEnd = slot.leftChildPointer;
-            slot.setRightChildPointer(parentPage.freeSpaceOffsetEnd - 4);
-            parentPage.freeSpaceOffsetEnd = slot.rightChildPointer;
+            int leftChildPointer = parentPage.freeSpaceOffsetEnd - 4;
+            parentPage.freeSpaceOffsetEnd = leftChildPointer;
+            int rightChildPointer = parentPage.freeSpaceOffsetEnd - 4;
+            this.freeSpaceOffsetEnd = rightChildPointer;
+
+            InternalSlot slot = new InternalSlot(4, medianKey, leftChildPointer, rightChildPointer);
+
             parentPage.slots[0] = slot;
             parentPage.freeSpaceOffsetStart += Constants.InternalSlotSize;
 
@@ -209,7 +267,7 @@ public class LeafPage implements Page {
             parentPage.numOfKeys++;
             System.out.println("this is the parent page aka new root " + parentPage);
         } else {
-            InternalPage parent = (InternalPage) BufferManager.getPage(this.parentPageId);
+            InternalPage parent = (InternalPage) BufferManager.getPage(this.parentPageId, this.file);
             assert parent != null;
             parent.maxKeyThresholdReached(medianKey, rightPage, tree);
         }

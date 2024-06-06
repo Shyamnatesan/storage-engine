@@ -5,11 +5,15 @@ public class InternalSlot implements Slot {
     public int lengthOfDataRecord;
     public int leftChildPointer;
     public int rightChildPointer;
+    public int key;
 
 
-    public InternalSlot(int lengthOfDataRecord) {
+    public InternalSlot(int lengthOfDataRecord, int key, int leftChildPointer, int rightChildPointer) {
         this.isDeleted = false;
         this.lengthOfDataRecord = lengthOfDataRecord;
+        this.key = key;
+        this.leftChildPointer = leftChildPointer;
+        this.rightChildPointer = rightChildPointer;
     }
 
     @Override
@@ -30,6 +34,16 @@ public class InternalSlot implements Slot {
     @Override
     public int[] getRecordOffsets() {
         return new int[]{this.leftChildPointer, this.rightChildPointer};
+    }
+
+    @Override
+    public int getKey() {
+        return this.key;
+    }
+
+    @Override
+    public void setKey(int key) {
+        this.key = key;
     }
 
     public void setLeftChildPointer(int leftChildPointer) {

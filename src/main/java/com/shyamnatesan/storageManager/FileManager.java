@@ -28,4 +28,7 @@ public class FileManager {
         return this.btree;
     }
 
+    public String Search(int key) {
+        return btree.search(key);
+    }
 }
