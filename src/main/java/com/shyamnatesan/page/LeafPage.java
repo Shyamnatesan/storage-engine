@@ -20,6 +20,7 @@ public class LeafPage implements Page {
     private String[] values;
     private Slot[] slots;
     private int rightSibling;
+    private int leftSibling;
     private final RandomAccessFile file;
 
     public LeafPage(RandomAccessFile file) {
@@ -35,6 +36,7 @@ public class LeafPage implements Page {
         this.values = new String[Constants.M];
         this.slots = new Slot[Constants.M];
         this.rightSibling = this.pageId;
+        this.leftSibling = this.pageId;
         this.file = file;
         BufferManager.addPageToBuffer(this);
     }
@@ -117,6 +119,16 @@ public class LeafPage implements Page {
     @Override
     public void setRightPage(int rightPage) {
         this.rightSibling = rightPage;
+    }
+
+    @Override
+    public int getLeftPage() {
+        return this.leftSibling;
+    }
+
+    @Override
+    public void setLeftPage(int leftPage) {
+        this.leftSibling = leftPage;
     }
 
     @Override
@@ -218,8 +230,12 @@ public class LeafPage implements Page {
 
         if (this.rightSibling != this.pageId) {
             rightPage.rightSibling = this.rightSibling;
+            Page oldSibling = BufferManager.getPage(this.rightSibling, this.file);
+            oldSibling.setLeftPage(rightPage.pageId);
         }
+
         this.rightSibling = rightPage.pageId;
+        rightPage.leftSibling = this.pageId;
 
 
         int j = 0;
@@ -286,6 +302,7 @@ public class LeafPage implements Page {
                 ", freeSpaceOffsetStart=" + freeSpaceOffsetStart +
                 ", freeSpaceOffsetEnd=" + freeSpaceOffsetEnd +
                 ", rightpage=" + this.rightSibling +
+                ", leftpage=" + this.leftSibling +
                 ", keys=" + Arrays.toString(keys) +
                 ", values=" + Arrays.toString(values) +
                 ", slots=" + Arrays.toString(slots) +

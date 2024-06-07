@@ -116,6 +116,16 @@ public class InternalPage implements Page {
     }
 
     @Override
+    public int getLeftPage() {
+        return 0;
+    }
+
+    @Override
+    public void setLeftPage(int leftPage) {
+
+    }
+
+    @Override
     public String getKeys() {
         return Arrays.toString(this.keys);
     }

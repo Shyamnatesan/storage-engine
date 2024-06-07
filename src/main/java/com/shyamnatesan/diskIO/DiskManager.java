@@ -26,13 +26,11 @@ public class DiskManager {
 
 
     public static Page readPage(int pageId, RandomAccessFile file) {
-//        System.out.println("reading page from disk");
         byte[] pageBytes = new byte[4096];
         int offset = pageId * Constants.PageSize;
         try {
             file.seek(offset);
             file.read(pageBytes);
-//            System.out.println("successfully read page from disk ");
         } catch (IOException e) {
             throw new RuntimeException();
         }
@@ -40,7 +38,6 @@ public class DiskManager {
     }
 
     public static Page deserializeByteArrayToPage(byte[] pageBytes, RandomAccessFile file) {
-//        System.out.println("starting deserialization");
         ByteBuffer buffer = ByteBuffer.wrap(pageBytes);
         buffer.order(ByteOrder.LITTLE_ENDIAN);
 
@@ -59,8 +56,8 @@ public class DiskManager {
         Slot[] slots = new Slot[Constants.M];
         String[] values = new String[Constants.M];
         if (isLeaf) {
-//            System.out.println("deserialization specific to leaf page");
             page.setRightPage(buffer.getInt());
+            page.setLeftPage(buffer.getInt());
             for (int i = 0; i < page.getNumKeys(); i++) {
                 boolean isDeleted = buffer.get() == 1;
                 int key = buffer.getInt();
@@ -80,11 +77,7 @@ public class DiskManager {
             page.setValues(values);
             page.setSlots(slots);
         } else {
-//            System.out.println("deserialization specific to internal page");
             int[] children = new int[Constants.M + 1];
-//            if (page.getPageId() == 7) {
-//                System.out.println("rakkama " + page.getNumKeys());
-//            }
             for (int i = 0; i < page.getNumKeys(); i++) {
                 boolean isDeleted = buffer.get() == 1;
                 int key = buffer.getInt();
@@ -95,9 +88,6 @@ public class DiskManager {
                 int leftChildId = buffer.getInt(leftChildPointer);
                 int rightChildId = buffer.getInt(rightChildPointer);
                 keys[i] = key;
-//                if (page.getPageId() == 7) {
-//                    System.out.println("key " + key);
-//                }
                 slots[i] = slot;
                 if (i == page.getNumKeys() - 1) {
                     children[i] = leftChildId;
@@ -106,9 +96,6 @@ public class DiskManager {
                     children[i] = leftChildId;
                 }
             }
-//            if (page.getPageId() == 7) {
-//                System.out.println("rakkama " + keys);
-//            }
             page.setKeys(keys);
             page.setSlots(slots);
             page.setChildren(children);
@@ -135,6 +122,7 @@ public class DiskManager {
 //            System.out.println("now serializing specific to leaf page");
 //            serialize rightSibling
             buffer.putInt(page.getRightPage());
+            buffer.putInt(page.getLeftPage());
 //            serialize slots and their corresponding data records/values
             Slot[] slots = page.getSlots();
             String[] values = page.getValues();

@@ -31,16 +31,8 @@ public class BufferManager {
         if (BufferPool.containsKey(pageId)) {
             return BufferPool.get(pageId);
         } else {
-//            System.out.println("buffer pool does not contain key. searching in disk...");
-            Page page = DiskManager.readPage(pageId, file);
-//            System.out.println("page read from disk is below");
-//            System.out.println(page);
-            if (page != null) {
-                return page;
-            }
+            return DiskManager.readPage(pageId, file);
         }
-
-        return null;
     }
 
     public static Page[] getPages() {
@@ -61,6 +53,6 @@ public class BufferManager {
                 page.setIsDirty(false);
             }
         }
-//        BufferPool.clear();
+        BufferPool.clear();
     }
 }

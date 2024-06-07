@@ -37,6 +37,10 @@ public interface Page {
 
     void setRightPage(int rightPage);
 
+    int getLeftPage();
+
+    void setLeftPage(int leftPage);
+
     String getKeys();
 
     void setKeys(int[] keys);
